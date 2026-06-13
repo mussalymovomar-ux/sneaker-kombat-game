@@ -1,0 +1,2231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sneaker Kombat — Prototype</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700;900&display=swap');
+
+  :root {
+    --bg-deep: #080A0F;
+    --bg-mid: #0F1218;
+    --bg-card: #141820;
+    --bg-card2: #1A2030;
+    --neon: #00FF87;
+    --neon-dim: rgba(0,255,135,0.12);
+    --neon-glow: rgba(0,255,135,0.3);
+    --pink: #FF2D78;
+    --pink-dim: rgba(255,45,120,0.12);
+    --gold: #FFD700;
+    --gold-dim: rgba(255,215,0,0.12);
+    --text: #F0F4FF;
+    --text-muted: #6B7A99;
+    --text-dim: #2E3A55;
+    --border: rgba(255,255,255,0.06);
+    --border-neon: rgba(0,255,135,0.25);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    position: relative;
+    overflow-x: hidden;
+    padding-bottom: 80px;
+  }
+
+  /* ===== SCANLINE AMBIENT ===== */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,135,0.015) 2px, rgba(0,255,135,0.015) 4px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== TOP BAR ===== */
+  .topbar {
+    position: relative;
+    z-index: 10;
+    padding: 14px 18px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-mid);
+  }
+
+  .rank-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .rank-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--neon-dim);
+    border: 1.5px solid var(--neon);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+  }
+
+  .rank-info { display: flex; flex-direction: column; }
+  .rank-label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .rank-name { font-size: 13px; font-weight: 700; color: var(--neon); }
+
+  .balance-block { text-align: center; }
+  .balance-hp {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    line-height: 1;
+  }
+  .balance-hp span { color: var(--neon); }
+  .balance-passive { font-size: 10px; color: var(--text-muted); }
+
+  .settings-btn {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-muted);
+    transition: border-color 0.2s;
+  }
+  .settings-btn:hover { border-color: var(--neon); }
+
+  /* ===== PROGRESS BAR ===== */
+  .rank-progress-wrap {
+    position: relative; z-index: 10;
+    padding: 8px 18px;
+    background: var(--bg-mid);
+  }
+  .rank-labels {
+    display: flex; justify-content: space-between;
+    font-size: 10px; color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .rank-bar-bg {
+    height: 4px; border-radius: 2px;
+    background: var(--bg-card2);
+    overflow: hidden;
+  }
+  .rank-bar-fill {
+    height: 100%; border-radius: 2px;
+    background: linear-gradient(90deg, var(--neon), #00CCFF);
+    transition: width 0.4s ease;
+  }
+
+  /* ===== SCREEN ROUTER ===== */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ===== HOME SCREEN ===== */
+  .home-arena {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 18px 16px;
+    min-height: 380px;
+  }
+
+  .sneaker-stage {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .sneaker-glow-ring {
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--neon-glow) 0%, transparent 70%);
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% { opacity: 0.4; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.05); }
+  }
+
+  .sneaker-svg {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 18px rgba(0,255,135,0.4));
+    transition: transform 0.08s;
+    position: relative;
+    z-index: 2;
+  }
+
+  .sneaker-stage:active .sneaker-svg {
+    transform: scale(0.93);
+    filter: drop-shadow(0 0 32px rgba(0,255,135,0.8));
+  }
+
+  /* tap ripple */
+  .tap-ripple {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid var(--neon);
+    pointer-events: none;
+    z-index: 100;
+    animation: ripple-out 0.5s ease-out forwards;
+  }
+
+  @keyframes ripple-out {
+    from { opacity: 0.8; transform: scale(0); }
+    to { opacity: 0; transform: scale(2.5); }
+  }
+
+  /* floating +HP text */
+  .float-text {
+    position: fixed;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--neon);
+    pointer-events: none;
+    z-index: 9999;
+    text-shadow: 0 0 10px var(--neon);
+    animation: float-up 0.9s ease-out forwards;
+  }
+
+  @keyframes float-up {
+    0% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-90px) scale(0.7); }
+  }
+
+  /* ===== ENERGY BAR ===== */
+  .energy-section {
+    width: 100%;
+    padding: 12px 18px 8px;
+  }
+
+  .energy-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .energy-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .energy-icon { font-size: 13px; }
+  .energy-val {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--neon);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .energy-bar-bg {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--bg-card2);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .energy-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #00FF87, #00CCFF);
+    transition: width 0.15s;
+    position: relative;
+  }
+
+  .energy-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 20px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 4px;
+  }
+
+  /* ===== HOME STATS ROW ===== */
+  .home-stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 18px 16px;
+  }
+
+  .stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+
+  .stat-card-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 4px;
+  }
+
+  .stat-card-val {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 0.02em;
+    color: var(--text);
+  }
+
+  .stat-card-val.neon { color: var(--neon); }
+  .stat-card-val.pink { color: var(--pink); }
+
+  /* ===== MARKET TAB ===== */
+  .market-header {
+    padding: 18px 18px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .market-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .market-subtitle { font-size: 12px; color: var(--text-muted); }
+
+  .tab-pills {
+    display: flex;
+    gap: 6px;
+    padding: 12px 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-pills::-webkit-scrollbar { display: none; }
+
+  .pill {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .pill.active {
+    background: var(--neon-dim);
+    border-color: var(--neon);
+    color: var(--neon);
+  }
+
+  /* ===== UPGRADE CARDS ===== */
+  .upgrade-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 18px 20px;
+  }
+
+  .upgrade-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upgrade-card:active { transform: scale(0.97); }
+
+  .upgrade-card.affordable {
+    border-color: var(--border-neon);
+  }
+
+  .upgrade-card.maxed {
+    border-color: var(--gold-dim);
+    opacity: 0.7;
+  }
+
+  .upgrade-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,255,135,0.04) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .upgrade-card.affordable::before {
+    background: linear-gradient(135deg, rgba(0,255,135,0.08) 0%, transparent 60%);
+  }
+
+  .upgrade-emoji {
+    font-size: 32px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .upgrade-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 2px;
+    line-height: 1.2;
+  }
+
+  .upgrade-level {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .upgrade-income {
+    font-size: 11px;
+    color: var(--neon);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .upgrade-btn {
+    width: 100%;
+    padding: 7px 0;
+    border-radius: 8px;
+    border: none;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: opacity 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .upgrade-btn.can-buy {
+    background: var(--neon);
+    color: #000;
+  }
+
+  .upgrade-btn.cant-buy {
+    background: var(--bg-card2);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  .upgrade-btn.is-maxed {
+    background: var(--gold-dim);
+    color: var(--gold);
+    cursor: default;
+  }
+
+  /* ===== SNEAKER DROPS (Cards) ===== */
+  .sneaker-drop-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 0 18px 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .sneaker-drop-card.locked { opacity: 0.55; }
+
+  .sneaker-drop-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 60%, rgba(255,45,120,0.06) 100%);
+    pointer-events: none;
+  }
+
+  .drop-sneaker-img {
+    width: 64px;
+    height: 64px;
+    border-radius: 10px;
+    background: var(--bg-card2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    flex-shrink: 0;
+  }
+
+  .drop-info { flex: 1; min-width: 0; }
+  .drop-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .drop-subtitle { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+
+  .drop-tier {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .tier-common { background: rgba(107,122,153,0.15); color: #6B7A99; }
+  .tier-rare { background: rgba(0,204,255,0.12); color: #00CCFF; }
+  .tier-legendary { background: rgba(255,45,120,0.12); color: var(--pink); }
+  .tier-grail { background: rgba(255,215,0,0.15); color: var(--gold); }
+
+  .drop-arrow { color: var(--text-dim); font-size: 16px; }
+
+  .drop-passive {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--neon);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* ===== DROPS TAB ===== */
+  .drops-hero {
+    background: linear-gradient(135deg, #0F1218 0%, #1A0A1A 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 18px;
+    text-align: center;
+  }
+
+  .drops-hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    letter-spacing: 0.08em;
+    background: linear-gradient(90deg, var(--pink), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .drops-hero-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .raffle-card {
+    margin: 12px 18px;
+    background: var(--bg-card);
+    border: 1px solid var(--pink-dim);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .raffle-header {
+    background: linear-gradient(135deg, #200A15 0%, #1A0A0A 100%);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .raffle-countdown {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    color: var(--pink);
+    letter-spacing: 0.04em;
+  }
+
+  .raffle-countdown-label { font-size: 10px; color: var(--text-muted); }
+
+  .raffle-body { padding: 14px 16px; }
+
+  .raffle-sneaker-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .raffle-img {
+    font-size: 52px;
+    width: 72px;
+    height: 72px;
+    background: var(--bg-card2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .raffle-meta-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .raffle-meta-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+
+  .raffle-supply {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--gold);
+  }
+
+  .raffle-enter-btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 10px;
+    border: none;
+    background: linear-gradient(90deg, var(--pink), #FF6B2B);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: opacity 0.15s;
+  }
+
+  .raffle-enter-btn:hover { opacity: 0.88; }
+
+  /* ===== NAV BAR ===== */
+  .nav-bar {
+    position: fixed;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: var(--bg-mid);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 50;
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 4px 8px;
+    cursor: pointer;
+    transition: color 0.15s;
+    color: var(--text-muted);
+    gap: 3px;
+  }
+
+  .nav-item.active { color: var(--neon); }
+
+  .nav-icon { font-size: 20px; transition: transform 0.15s; }
+  .nav-item.active .nav-icon { transform: scale(1.1); }
+  .nav-label { font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed;
+    top: 20px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-card2);
+    border: 1px solid var(--neon);
+    color: var(--neon);
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 700;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+
+  .toast.show { opacity: 1; }
+
+  /* ===== RESELL TAB ===== */
+  .resell-card {
+    margin: 0 18px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .resell-icon {
+    font-size: 36px;
+    width: 54px;
+    height: 54px;
+    background: var(--bg-card2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .resell-meta { flex: 1; }
+  .resell-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .resell-seller { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+  .resell-price { font-size: 13px; font-weight: 700; color: var(--gold); }
+
+  .resell-buy-btn {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: none;
+    background: var(--gold-dim);
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 1px solid rgba(255,215,0,0.2);
+    transition: background 0.15s;
+  }
+
+  .resell-buy-btn:hover { background: rgba(255,215,0,0.2); }
+
+  /* ===== FRIENDS TAB ===== */
+  .friends-hero {
+    padding: 24px 18px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .friends-big {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    color: var(--neon);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .friends-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; }
+
+  .friends-referral-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-neon);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .referral-link {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: monospace;
+  }
+
+  .copy-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    background: var(--neon);
+    color: #000;
+    font-size: 11px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+  }
+
+  .friends-list { padding: 16px 18px; }
+  .friends-list-title { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+
+  .friend-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .friend-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--bg-card2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    border: 1.5px solid var(--border);
+  }
+
+  .friend-name { flex: 1; font-size: 13px; font-weight: 600; }
+  .friend-bonus { font-size: 12px; color: var(--neon); font-weight: 700; }
+
+  /* ===== SECTION TITLE ===== */
+  .section-title {
+    padding: 16px 18px 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ===== SCROLL ===== */
+  .scrollable { overflow-y: auto; }
+
+  /* ===== NOTIFICATION DOT ===== */
+  .notif-dot {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--pink);
+    border: 1.5px solid var(--bg-mid);
+  }
+
+  /* ===== COMBO COUNTER ===== */
+  .combo-bar {
+    text-align: center;
+    margin: 4px 0 0;
+    height: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--pink);
+    letter-spacing: 0.06em;
+    transition: opacity 0.3s;
+  }
+
+  /* ===== SCREEN SHAKE (big combo) ===== */
+  @keyframes screen-shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px) rotate(-0.4deg); }
+    40% { transform: translateX(4px) rotate(0.4deg); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+  body.shake { animation: screen-shake 0.32s ease-in-out; }
+
+  /* ===== TAP PARTICLES ===== */
+  .tap-particle {
+    position: fixed;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    animation: particle-burst 0.7s ease-out forwards;
+  }
+  @keyframes particle-burst {
+    0% { opacity: 1; transform: translate(0,0) scale(1); }
+    100% { opacity: 0; transform: translate(var(--px), var(--py)) scale(0.2); }
+  }
+
+  /* ===== SNEAKER WIGGLE ON HOT COMBO ===== */
+  .sneaker-stage.combo-hot .sneaker-svg {
+    animation: sneaker-wiggle 0.4s ease-in-out infinite;
+  }
+  @keyframes sneaker-wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-3deg) scale(1.02); }
+    75% { transform: rotate(3deg) scale(1.02); }
+  }
+
+  /* ===== SHOP / STARS TAB ===== */
+  .shop-hero {
+    background: linear-gradient(135deg, #0F1218 0%, #1A1608 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 18px;
+    text-align: center;
+  }
+  .shop-hero-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    letter-spacing: 0.06em;
+    background: linear-gradient(90deg, var(--gold), var(--pink));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .shop-hero-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+  .star-pack-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 18px 8px;
+  }
+  .star-pack-card {
+    background: var(--bg-card);
+    border: 1px solid var(--gold-dim);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .star-pack-card:active { transform: scale(0.96); }
+  .star-pack-card:hover { border-color: var(--gold); }
+  .star-pack-emoji { font-size: 28px; margin-bottom: 6px; display: block; }
+  .star-pack-name { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .star-pack-desc { font-size: 10px; color: var(--text-muted); margin-bottom: 8px; min-height: 26px; }
+  .star-pack-price {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 12px; border-radius: 8px;
+    background: var(--gold-dim); color: var(--gold);
+    font-size: 12px; font-weight: 700;
+    border: 1px solid rgba(255,215,0,0.2);
+  }
+
+  /* ===== MYSTERY BOX CARDS ===== */
+  .box-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 18px 8px;
+  }
+  .box-card {
+    position: relative;
+    background: var(--bg-card);
+    border: 1px solid var(--border-neon);
+    border-radius: var(--radius);
+    padding: 16px 12px;
+    text-align: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.1s;
+  }
+  .box-card:active { transform: scale(0.96); }
+  .box-card.legendary { border-color: rgba(255,45,120,0.35); }
+  .box-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(0,255,135,0.10), transparent 60%);
+    pointer-events: none;
+  }
+  .box-card.legendary::before {
+    background: radial-gradient(circle at 50% 0%, rgba(255,45,120,0.12), transparent 60%);
+  }
+  .box-emoji { font-size: 40px; display: block; margin-bottom: 6px; animation: box-float 2.4s ease-in-out infinite; }
+  @keyframes box-float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-4px) rotate(3deg); }
+  }
+  .box-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .box-desc { font-size: 10px; color: var(--text-muted); margin-bottom: 8px; }
+  .box-price {
+    display: inline-block; padding: 6px 12px; border-radius: 8px;
+    background: var(--neon-dim); color: var(--neon);
+    font-size: 11px; font-weight: 700; border: 1px solid var(--border-neon);
+  }
+  .box-card.legendary .box-price { background: var(--pink-dim); color: var(--pink); border-color: rgba(255,45,120,0.3); }
+
+  /* ===== SKINS GRID ===== */
+  .skin-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 0 18px 20px;
+  }
+  .skin-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.1s;
+    position: relative;
+  }
+  .skin-card:active { transform: scale(0.97); }
+  .skin-card.equipped { border-color: var(--neon); }
+  .skin-card.locked { opacity: 0.5; }
+  .skin-preview {
+    width: 100%; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 6px;
+  }
+  .skin-preview svg { width: 64px; height: 64px; filter: drop-shadow(0 0 8px rgba(0,255,135,0.25)); }
+  .skin-name { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+  .skin-rarity { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .skin-btn {
+    width: 100%; padding: 6px 0; border-radius: 8px; border: none;
+    font-size: 10px; font-weight: 700; cursor: pointer; letter-spacing: 0.04em;
+  }
+  .skin-btn.equip { background: var(--neon); color: #000; }
+  .skin-btn.equipped-btn { background: var(--gold-dim); color: var(--gold); border: 1px solid rgba(255,215,0,0.2); cursor: default; }
+  .skin-btn.locked-btn { background: var(--bg-card2); color: var(--text-muted); cursor: not-allowed; }
+
+  /* ===== MODAL OVERLAY (Mystery Box Reveal) ===== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(4,6,10,0.82);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .modal-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-neon);
+    border-radius: 20px;
+    padding: 28px 24px;
+    width: 86%;
+    max-width: 320px;
+    text-align: center;
+    transform: scale(0.85);
+    transition: transform 0.25s;
+  }
+  .modal-overlay.show .modal-card { transform: scale(1); }
+
+  .modal-box-icon {
+    font-size: 64px;
+    margin-bottom: 14px;
+    display: inline-block;
+  }
+  .modal-box-icon.shaking { animation: box-shake 0.5s ease-in-out infinite; }
+  @keyframes box-shake {
+    0%, 100% { transform: rotate(0deg) scale(1); }
+    20% { transform: rotate(-8deg) scale(1.05); }
+    40% { transform: rotate(8deg) scale(1.05); }
+    60% { transform: rotate(-6deg) scale(1.02); }
+    80% { transform: rotate(6deg) scale(1.02); }
+  }
+
+  .modal-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px; letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .modal-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 18px; }
+
+  .modal-reward {
+    background: var(--bg-card2);
+    border: 1px solid var(--border-neon);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 18px;
+    display: none;
+  }
+  .modal-reward.show { display: block; animation: reward-pop 0.4s ease-out; }
+  @keyframes reward-pop {
+    0% { transform: scale(0.6); opacity: 0; }
+    60% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); }
+  }
+  .modal-reward-emoji { font-size: 44px; margin-bottom: 8px; }
+  .modal-reward-name { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
+  .modal-reward-desc { font-size: 11px; color: var(--text-muted); }
+
+  .modal-btn {
+    width: 100%; padding: 13px; border-radius: 10px; border: none;
+    background: var(--neon); color: #000; font-weight: 700; font-size: 14px;
+    cursor: pointer; letter-spacing: 0.04em;
+  }
+
+  /* ===== CONFETTI ===== */
+  .confetti-piece {
+    position: fixed;
+    width: 8px; height: 14px;
+    z-index: 10001;
+    pointer-events: none;
+    animation: confetti-fall 1.4s ease-in forwards;
+    top: -20px;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(540deg); opacity: 0; }
+  }
+
+  /* ===== DONATE SECTION ===== */
+  .donate-card {
+    margin: 0 18px 16px;
+    background: linear-gradient(135deg, rgba(0,255,135,0.06), rgba(255,45,120,0.06));
+    border: 1px solid var(--border-neon);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+  }
+  .donate-card-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .donate-card-sub { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; }
+  .donate-row { display: flex; gap: 8px; }
+  .donate-btn {
+    flex: 1; padding: 10px 0; border-radius: 10px; border: 1px solid var(--border-neon);
+    background: var(--bg-card2); color: var(--text); font-size: 12px; font-weight: 700;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+  }
+  .donate-btn:hover { border-color: var(--gold); background: var(--gold-dim); color: var(--gold); }
+</style>
+</head>
+<body>
+
+<!-- REAL TELEGRAM SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<!-- MOCK TELEGRAM SDK (fallback for testing outside Telegram) -->
+<script>
+const REAL_TG_AVAILABLE = !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
+if (!REAL_TG_AVAILABLE) {
+window.Telegram = {
+  WebApp: {
+    ready() { console.log('[TG SDK] WebApp.ready()'); },
+    expand() { console.log('[TG SDK] WebApp.expand()'); },
+    close() { console.log('[TG SDK] WebApp.close()'); },
+    MainButton: {
+      text: '', isVisible: false,
+      show() { this.isVisible = true; console.log('[TG SDK] MainButton.show() text:', this.text); },
+      hide() { this.isVisible = false; },
+      setText(t) { this.text = t; }
+    },
+    HapticFeedback: {
+      impactOccurred(style) { console.log('[TG SDK] HapticFeedback.impactOccurred:', style); },
+      notificationOccurred(type) { console.log('[TG SDK] HapticFeedback.notificationOccurred:', type); }
+    },
+    openInvoice(slug, cb) {
+      console.log('[TG SDK] openInvoice:', slug);
+      setTimeout(() => cb && cb('paid'), 1200);
+    },
+    initDataUnsafe: {
+      user: { id: 12345678, first_name: 'Sneaker', last_name: 'God', username: 'sneakergod', language_code: 'en' }
+    },
+    colorScheme: 'dark',
+    themeParams: { bg_color: '#080A0F', text_color: '#F0F4FF', button_color: '#00FF87', button_text_color: '#000000' }
+  }
+};
+} else {
+  console.log('[TG SDK] Real Telegram WebApp detected — using native SDK');
+}
+</script>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- TOP BAR -->
+<div class="topbar" id="topbar">
+  <div class="rank-badge">
+    <div class="rank-icon" id="rankIcon">👟</div>
+    <div class="rank-info">
+      <span class="rank-label">Rank</span>
+      <span class="rank-name" id="rankName">Resell Noob</span>
+    </div>
+  </div>
+  <div class="balance-block">
+    <div class="balance-hp" id="balanceHp"><span id="hpDisplay">0</span> <span>HP</span></div>
+    <div class="balance-passive" id="passiveDisplay">+0 HP/hr</div>
+  </div>
+  <div class="settings-btn" onclick="showToast('⚙️ Settings coming soon')">⚙️</div>
+</div>
+
+<!-- RANK PROGRESS -->
+<div class="rank-progress-wrap">
+  <div class="rank-labels">
+    <span id="rankCurrent">Resell Noob</span>
+    <span id="rankNext">Sneaker Clerk</span>
+  </div>
+  <div class="rank-bar-bg">
+    <div class="rank-bar-fill" id="rankBarFill" style="width: 0%"></div>
+  </div>
+</div>
+
+<!-- ===================== HOME SCREEN ===================== -->
+<div class="screen active" id="screen-home">
+  <div class="home-arena">
+    <div class="sneaker-stage" id="sneakerStage" ontouchstart="handleTap(event)" onclick="handleTap(event)">
+      <div class="sneaker-glow-ring"></div>
+      <div id="sneakerSvgWrap"></div>
+    </div>
+    <div class="combo-bar" id="comboBar" style="opacity:0">🔥 COMBO x<span id="comboCount">0</span></div>
+  </div>
+
+  <div class="energy-section">
+    <div class="energy-row">
+      <div class="energy-label"><span class="energy-icon">⚡</span> Energy</div>
+      <div class="energy-val"><span id="energyVal">1000</span> / <span id="energyMax">1000</span></div>
+    </div>
+    <div class="energy-bar-bg">
+      <div class="energy-bar-fill" id="energyBarFill" style="width:100%"></div>
+    </div>
+  </div>
+
+  <div class="home-stats-row">
+    <div class="stat-card">
+      <div class="stat-card-label">Taps Today</div>
+      <div class="stat-card-val neon" id="tapsToday">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-label">Passive HP/hr</div>
+      <div class="stat-card-val pink" id="passiveHr">0</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MARKET SCREEN ===================== -->
+<div class="screen" id="screen-market">
+  <div class="market-header">
+    <div class="market-title">Black Market</div>
+    <div class="market-subtitle">Spend your Hype Points to grow your empire</div>
+  </div>
+
+  <div class="tab-pills">
+    <div class="pill active" onclick="filterMarket('all', this)">All</div>
+    <div class="pill" onclick="filterMarket('tech', this)">Tech</div>
+    <div class="pill" onclick="filterMarket('plug', this)">Plugs</div>
+    <div class="pill" onclick="filterMarket('storage', this)">Storage</div>
+    <div class="pill" onclick="filterMarket('hype', this)">Hype</div>
+  </div>
+
+  <div class="upgrade-grid" id="upgradeGrid">
+    <!-- Rendered by JS -->
+  </div>
+</div>
+
+<!-- ===================== DROPS SCREEN ===================== -->
+<div class="screen" id="screen-drops">
+  <div class="drops-hero">
+    <div class="drops-hero-title">Exclusive Drops</div>
+    <div class="drops-hero-sub">Limited pairs. Enter raffles. Win grails.</div>
+  </div>
+
+  <div class="section-title">Live Raffles</div>
+
+  <div class="raffle-card">
+    <div class="raffle-header">
+      <div>
+        <div class="raffle-countdown-label">CLOSES IN</div>
+        <div class="raffle-countdown" id="raffleTimer">03:42:18</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--text-muted)">Entries</div>
+        <div style="font-size:18px;font-weight:700;color:var(--pink)">847</div>
+      </div>
+    </div>
+    <div class="raffle-body">
+      <div class="raffle-sneaker-row">
+        <div class="raffle-img">👟</div>
+        <div>
+          <div class="raffle-meta-name">Travis Scott AJ1 Mocha</div>
+          <div class="raffle-meta-sub">Air Jordan 1 Retro High OG</div>
+          <div class="raffle-supply">🏆 Only <b>50 pairs</b> available</div>
+        </div>
+      </div>
+      <button class="raffle-enter-btn" onclick="enterRaffle()">🎟 Enter Raffle — 1 Golden Ticket (⭐ Stars)</button>
+    </div>
+  </div>
+
+  <div class="raffle-card" style="opacity:0.6">
+    <div class="raffle-header">
+      <div>
+        <div class="raffle-countdown-label">OPENS IN</div>
+        <div class="raffle-countdown" style="color:var(--gold)">1d 06:00</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:10px;color:var(--text-muted)">Supply</div>
+        <div style="font-size:18px;font-weight:700;color:var(--gold)">10</div>
+      </div>
+    </div>
+    <div class="raffle-body">
+      <div class="raffle-sneaker-row">
+        <div class="raffle-img">💎</div>
+        <div>
+          <div class="raffle-meta-name">Crypto-Kicks OG "Diamond"</div>
+          <div class="raffle-meta-sub">Futuristic Web3 Collab</div>
+          <div class="raffle-supply" style="color:var(--pink)">🔥 1-of-10 GRAIL</div>
+        </div>
+      </div>
+      <button class="raffle-enter-btn" style="background:linear-gradient(90deg,var(--gold),#FF9900);opacity:0.5" disabled>🔒 Coming Soon</button>
+    </div>
+  </div>
+
+  <div class="section-title">Sneaker Collection</div>
+
+  <div class="sneaker-drop-card" id="dropCard-0">
+    <div class="drop-sneaker-img">👟</div>
+    <div class="drop-info">
+      <div class="drop-name">Air Max 90 Classic</div>
+      <div class="drop-subtitle">Level 1 — Base Collection</div>
+      <span class="drop-tier tier-common">Common</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div class="drop-passive" id="sneakerPassive-0">+500 HP/hr</div>
+      <span style="color:var(--text-dim);font-size:18px">›</span>
+    </div>
+  </div>
+
+  <div class="sneaker-drop-card" id="dropCard-1" onclick="showToast('🔒 Unlock at Sneaker Clerk rank')">
+    <div class="drop-sneaker-img">🔴</div>
+    <div class="drop-info">
+      <div class="drop-name">Nike SB Dunk Low</div>
+      <div class="drop-subtitle">Level 0 — Locked</div>
+      <span class="drop-tier tier-rare">Rare</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div class="drop-passive" style="color:var(--text-muted)">Locked 🔒</div>
+      <span style="color:var(--text-dim);font-size:18px">›</span>
+    </div>
+  </div>
+
+  <div class="sneaker-drop-card" id="dropCard-2" style="opacity:0.4" onclick="showToast('🔒 Unlock at Hype Beast rank')">
+    <div class="drop-sneaker-img">💜</div>
+    <div class="drop-info">
+      <div class="drop-name">Travis Scott AJ1</div>
+      <div class="drop-subtitle">Locked</div>
+      <span class="drop-tier tier-legendary">Legendary</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div class="drop-passive" style="color:var(--text-muted)">Locked 🔒</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== RESELL SCREEN ===================== -->
+<div class="screen" id="screen-resell">
+  <div class="market-header">
+    <div class="market-title">Resell Market</div>
+    <div class="market-subtitle">P2P marketplace — buy &amp; sell rare kicks</div>
+  </div>
+
+  <div style="margin:40px 18px; background:var(--bg-card); border:1px dashed var(--border-neon); border-radius:var(--radius); padding:48px 20px; text-align:center;">
+    <div style="font-size:48px;margin-bottom:14px">🛠️</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:0.06em;background:linear-gradient(90deg,var(--neon),var(--pink));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px">Coming Soon</div>
+    <div style="font-size:13px;color:var(--text-muted);line-height:1.5">The Resell Market is being rebuilt.<br>P2P trading of grail sneakers will launch here soon!</div>
+  </div>
+</div>
+
+<!-- ===================== FRIENDS SCREEN ===================== -->
+<div class="screen" id="screen-friends">
+  <div class="friends-hero">
+    <div class="friends-big">+5K HP</div>
+    <div class="friends-sub">per friend you invite. They get +2.5K HP too.</div>
+    <div style="margin:0 0 12px">
+      <div class="friends-referral-box">
+        <span class="referral-link">t.me/SneakerKombatBot?start=ref_12345678</span>
+        <button class="copy-btn" onclick="copyRef()">Copy</button>
+      </div>
+    </div>
+    <button onclick="inviteFriend()" style="padding:12px 28px;border-radius:10px;border:none;background:var(--neon);color:#000;font-weight:700;font-size:14px;cursor:pointer;width:100%">📲 Invite Friends via Telegram</button>
+  </div>
+
+  <div class="friends-list">
+    <div class="friends-list-title">Your Squad (0)</div>
+    <div style="text-align:center; padding:24px 12px; color:var(--text-muted); font-size:12px; line-height:1.6;">
+      🤝 No friends invited yet.<br>Share your link above — when friends join, they'll appear here with their bonus.
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SHOP SCREEN ===================== -->
+<div class="screen" id="screen-shop">
+  <div class="shop-hero">
+    <div class="shop-hero-title">Sneaker Shop</div>
+    <div class="shop-hero-sub">Telegram Stars ⭐ — boosts, surprise boxes &amp; exclusive skins</div>
+  </div>
+
+  <div class="section-title" style="padding-top:14px">Boosts</div>
+  <div class="star-pack-grid">
+    <div class="star-pack-card" onclick="buyStarItem('energy')">
+      <span class="star-pack-emoji">⚡</span>
+      <div class="star-pack-name">Full Energy</div>
+      <div class="star-pack-desc">Instantly refill your energy bar to max</div>
+      <div class="star-pack-price">⭐ 10</div>
+    </div>
+    <div class="star-pack-card" onclick="buyStarItem('doublehp')">
+      <span class="star-pack-emoji">🚀</span>
+      <div class="star-pack-name">2x HP — 30 min</div>
+      <div class="star-pack-desc">Double all tap &amp; passive earnings</div>
+      <div class="star-pack-price">⭐ 30</div>
+    </div>
+    <div class="star-pack-card" onclick="buyStarItem('ticket')">
+      <span class="star-pack-emoji">🎟</span>
+      <div class="star-pack-name">Golden Ticket</div>
+      <div class="star-pack-desc">Enter any active Drops raffle</div>
+      <div class="star-pack-price">⭐ 50</div>
+    </div>
+    <div class="star-pack-card" onclick="buyStarItem('hypebundle')">
+      <span class="star-pack-emoji">📦</span>
+      <div class="star-pack-name">Hype Bundle</div>
+      <div class="star-pack-desc">3 tickets + 5,000 HP instantly</div>
+      <div class="star-pack-price">⭐ 99</div>
+    </div>
+  </div>
+
+  <div class="section-title">Surprise Boxes</div>
+  <div class="box-grid">
+    <div class="box-card" onclick="openBox('hp')">
+      <span class="box-emoji">📦</span>
+      <div class="box-name">HP Crate</div>
+      <div class="box-desc">Random 1K–20K HP or a skin</div>
+      <div class="box-price">5,000 HP</div>
+    </div>
+    <div class="box-card legendary" onclick="openBox('stars')">
+      <span class="box-emoji">🎁</span>
+      <div class="box-name">Grail Box</div>
+      <div class="box-desc">Guaranteed rare/legendary skin or huge HP</div>
+      <div class="box-price">⭐ 75</div>
+    </div>
+  </div>
+
+  <div class="section-title">Sneaker Skins</div>
+  <div class="skin-grid" id="skinGrid"><!-- rendered by JS --></div>
+
+  <div class="section-title">Support The Devs</div>
+  <div class="donate-card">
+    <div class="donate-card-title">❤️ Enjoying Sneaker Kombat?</div>
+    <div class="donate-card-sub">Send the dev team a tip via Telegram Stars — keeps the drops coming!</div>
+    <div class="donate-row">
+      <button class="donate-btn" onclick="donateStars(25)">⭐ 25</button>
+      <button class="donate-btn" onclick="donateStars(50)">⭐ 50</button>
+      <button class="donate-btn" onclick="donateStars(100)">⭐ 100</button>
+      <button class="donate-btn" onclick="donateStars(250)">⭐ 250</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MYSTERY BOX MODAL ===================== -->
+<div class="modal-overlay" id="boxModal">
+  <div class="modal-card">
+    <div class="modal-box-icon shaking" id="modalBoxIcon">🎁</div>
+    <div class="modal-title" id="modalTitle">Opening...</div>
+    <div class="modal-sub" id="modalSub">Hold tight, unwrapping your reward</div>
+    <div class="modal-reward" id="modalReward">
+      <div class="modal-reward-emoji" id="modalRewardEmoji">🎉</div>
+      <div class="modal-reward-name" id="modalRewardName"></div>
+      <div class="modal-reward-desc" id="modalRewardDesc"></div>
+    </div>
+    <button class="modal-btn" id="modalCloseBtn" style="display:none" onclick="closeBoxModal()">Awesome!</button>
+  </div>
+</div>
+
+<!-- ===================== BOTTOM NAV ===================== -->
+<nav class="nav-bar">
+  <div class="nav-item active" onclick="switchTab('home', this)" id="nav-home">
+    <span class="nav-icon">👟</span>
+    <span class="nav-label">Tap</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('market', this)" id="nav-market">
+    <span class="nav-icon">🛒</span>
+    <span class="nav-label">Market</span>
+    <div class="notif-dot" id="marketDot"></div>
+  </div>
+  <div class="nav-item" onclick="switchTab('drops', this)" id="nav-drops">
+    <span class="nav-icon">🎟</span>
+    <span class="nav-label">Drops</span>
+    <div class="notif-dot"></div>
+  </div>
+  <div class="nav-item" onclick="switchTab('resell', this)" id="nav-resell">
+    <span class="nav-icon">💰</span>
+    <span class="nav-label">Resell</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('friends', this)" id="nav-friends">
+    <span class="nav-icon">👥</span>
+    <span class="nav-label">Friends</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('shop', this)" id="nav-shop">
+    <span class="nav-icon">⭐</span>
+    <span class="nav-label">Shop</span>
+  </div>
+</nav>
+
+<!-- ===================== GAME LOGIC ===================== -->
+<script>
+// ===== INIT TELEGRAM SDK =====
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
+// ===== TELEGRAM STARS INVOICES =====
+// IMPORTANT: real Telegram payments require an invoice LINK created by YOUR bot
+// via the Bot API method `createInvoiceLink` (https://core.telegram.org/bots/api#createinvoicelink).
+// A plain string slug cannot be opened by tg.openInvoice() inside the real Telegram app —
+// that's why purchases looked like they "completed" instantly but no payment sheet appeared
+// (the mock SDK was auto-resolving every call to 'paid').
+//
+// Set INVOICE_API_URL to your backend endpoint that calls createInvoiceLink and
+// returns { invoiceLink: "https://t.me/$..." }. Until that backend exists, real
+// purchases will show a friendly "unavailable" message instead of silently succeeding.
+const INVOICE_API_URL = 'https://sneaker-kombat.onrender.com/api/create-invoice'; // <-- backend deployed on Render
+
+async function openStarsInvoice(itemId, amountStars, cb) {
+  // Local testing / no real Telegram session -> use mock flow
+  if (!REAL_TG_AVAILABLE) {
+    tg.openInvoice(itemId, cb);
+    return;
+  }
+
+  if (!INVOICE_API_URL) {
+    showToast('⚠️ Payments not configured yet — set INVOICE_API_URL');
+    return;
+  }
+
+  try {
+    const res = await fetch(INVOICE_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        itemId,
+        amount: amountStars,
+        initData: tg.initData,
+        userId: tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null,
+      }),
+    });
+    if (!res.ok) throw new Error('bad response');
+    const data = await res.json();
+    if (!data.invoiceLink) throw new Error('no invoice link returned');
+
+    tg.openInvoice(data.invoiceLink, (status) => {
+      cb && cb(status);
+    });
+  } catch (err) {
+    console.error('[Stars] invoice error', err);
+    showToast('❌ Payment unavailable, try again later');
+  }
+}
+
+// ===== GAME STATE =====
+// Math model: HP = floor(baseTap * multiplier * comboBonus)
+// Energy regen: 1 per second
+// Upgrade cost: baseCost * 1.15^level (exponential)
+// ROI breakeven: cost / (income_delta_per_sec) in seconds
+
+const RANKS = [
+  { name: 'Resell Noob', icon: '👟', threshold: 0 },
+  { name: 'Sneaker Clerk', icon: '🏪', threshold: 5000 },
+  { name: 'Hype Beast', icon: '🔥', threshold: 50000 },
+  { name: 'Plug Operator', icon: '🤝', threshold: 250000 },
+  { name: 'Bot King', icon: '🤖', threshold: 1000000 },
+  { name: 'Streetwear God', icon: '💎', threshold: 5000000 },
+  { name: 'Sneaker Legend', icon: '🏆', threshold: 20000000 },
+  { name: 'Sneaker God', icon: '👑', threshold: 100000000 },
+];
+
+const UPGRADES = [
+  { id: 0, name: 'Sneaker Bot Sub', emoji: '🤖', desc: 'Auto-cop bots running 24/7', category: 'tech',
+    baseCost: 500, baseIncome: 100, level: 0, maxLevel: 20 },
+  { id: 1, name: 'Backdoor Plug', emoji: '🤝', desc: 'Insider access to unreleased Ws', category: 'plug',
+    baseCost: 2500, baseIncome: 400, level: 0, maxLevel: 20 },
+  { id: 2, name: 'Proxy Server Rack', emoji: '🖥️', desc: 'Bypass queue systems with proxies', category: 'tech',
+    baseCost: 8000, baseIncome: 1200, level: 0, maxLevel: 20 },
+  { id: 3, name: 'Crease Protectors', emoji: '👟', desc: 'Keep inventory in pristine DS cond.', category: 'storage',
+    baseCost: 1500, baseIncome: 250, level: 0, maxLevel: 20 },
+  { id: 4, name: 'Hype Influencer', emoji: '📱', desc: 'Pay an influencer to hype your store', category: 'hype',
+    baseCost: 20000, baseIncome: 3000, level: 0, maxLevel: 20 },
+  { id: 5, name: 'StockX Account', emoji: '📊', desc: 'Premium resell platform access', category: 'plug',
+    baseCost: 45000, baseIncome: 7500, level: 0, maxLevel: 20 },
+  { id: 6, name: 'Sneaker Storage Vault', emoji: '🏭', desc: 'Climate-controlled warehouse', category: 'storage',
+    baseCost: 100000, baseIncome: 18000, level: 0, maxLevel: 20 },
+  { id: 7, name: 'Collab Deal', emoji: '🌟', desc: 'Exclusive brand collaboration', category: 'hype',
+    baseCost: 500000, baseIncome: 80000, level: 0, maxLevel: 20 },
+];
+
+// ===== SNEAKER SKINS =====
+// Each skin recolors the same AJ1 silhouette via CSS-var-free template colors.
+const SKINS = [
+  { id: 'neon',   name: 'Neon Hype',     rarity: 'Starter',   accent: '#00FF87', body: '#111B11', panel: '#1A3020', panel2: '#0F2018', sole: '#1A2A1A', glow: '0,255,135', unlock: 'free' },
+  { id: 'pink',   name: 'Off-Pink',      rarity: 'Rare',      accent: '#FF2D78', body: '#1B0F16', panel: '#301A28', panel2: '#200F1A', sole: '#2A1A22', glow: '255,45,120', unlock: 'stars', price: 150 },
+  { id: 'ice',    name: 'Cool Grey',     rarity: 'Rare',      accent: '#00CCFF', body: '#0F151B', panel: '#1A2A30', panel2: '#0F2028', sole: '#1A2228', glow: '0,204,255', unlock: 'stars', price: 120 },
+  { id: 'gold',   name: 'Cosmos',        rarity: 'Legendary', accent: '#FFD700', body: '#1B160A', panel: '#302A14', panel2: '#201A0A', sole: '#2A2414', glow: '255,215,0', unlock: 'rank', rank: 4 },
+  { id: 'bred',   name: 'Bred Grail',    rarity: 'Grail',     accent: '#FF3B3B', body: '#0A0A0A', panel: '#2A1414', panel2: '#180A0A', sole: '#1A0F0F', glow: '255,59,59', unlock: 'box' },
+  { id: 'chrome', name: 'Chrome Drip',   rarity: 'Grail',     accent: '#E8E8FF', body: '#10121B', panel: '#262838', panel2: '#161824', sole: '#1E2030', glow: '232,232,255', unlock: 'box' },
+];
+
+function sneakerSVG(skin) {
+  const a = skin.accent, b = skin.body, p1 = skin.panel, p2 = skin.panel2, s = skin.sole, g = skin.glow;
+  return `<svg class="sneaker-svg" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 18px rgba(${g},0.4))">
+    <ellipse cx="100" cy="162" rx="82" ry="14" fill="#0A0F0A" opacity="0.7"/>
+    <path d="M18 148 Q18 160 35 164 L168 164 Q185 164 184 152 L184 140 Q140 138 100 140 Q60 138 18 140 Z" fill="${s}"/>
+    <path d="M20 140 Q60 136 100 138 Q140 136 183 140 L183 147 Q140 144 100 146 Q60 144 20 147 Z" fill="${a}" opacity="0.85"/>
+    <path d="M30 140 Q28 110 45 88 Q60 68 88 60 Q100 58 112 62 L165 88 Q178 100 182 120 L183 140 Z" fill="${b}"/>
+    <path d="M45 88 Q65 72 90 66 L110 70 Q95 80 78 90 Q62 98 50 110 Z" fill="${p1}" opacity="0.9"/>
+    <path d="M110 70 L165 90 Q175 108 180 130 L150 125 Q138 105 118 88 Z" fill="${p2}" opacity="0.8"/>
+    <path d="M55 115 Q80 100 115 92 Q140 87 165 92" stroke="${a}" stroke-width="3.5" fill="none" stroke-linecap="round" opacity="0.9"/>
+    <path d="M88 60 Q94 40 100 32 Q106 40 112 62 Q100 58 88 60Z" fill="${p1}"/>
+    <text x="100" y="50" text-anchor="middle" font-family="'Bebas Neue', sans-serif" font-size="9" fill="${a}" opacity="0.9">SK</text>
+    <line x1="90" y1="65" x2="110" y2="65" stroke="${a}" stroke-width="1.5" opacity="0.6"/>
+    <line x1="89" y1="72" x2="111" y2="72" stroke="${a}" stroke-width="1.5" opacity="0.6"/>
+    <line x1="88" y1="79" x2="112" y2="79" stroke="${a}" stroke-width="1.5" opacity="0.6"/>
+    <line x1="88" y1="86" x2="112" y2="86" stroke="${a}" stroke-width="1.5" opacity="0.6"/>
+    <path d="M165 88 L172 72 Q180 68 184 78 L183 100 Z" fill="${p2}"/>
+    <rect x="170" y="72" width="8" height="18" rx="2" fill="${a}" opacity="0.4"/>
+    <path d="M55 90 Q68 76 80 70 Q70 88 58 105 Z" fill="rgba(${g},0.06)"/>
+    <path d="M30 140 Q28 110 45 88 Q60 68 88 60 Q100 58 112 62 L165 88 Q178 100 182 120 L183 140" stroke="${a}" stroke-width="0.8" fill="none" opacity="0.3"/>
+  </svg>`;
+}
+
+function renderSneaker() {
+  const skin = SKINS.find(s => s.id === state.activeSkin) || SKINS[0];
+  document.getElementById('sneakerSvgWrap').innerHTML = sneakerSVG(skin);
+}
+
+const state = {
+  hp: 0,
+  totalEarned: 0,
+  energy: 1000,
+  maxEnergy: 1000,
+  energyRegen: 3,       // per second
+  tapDamage: 1,         // base HP per tap
+  passivePerHour: 0,
+  tapsToday: 0,
+  rankIndex: 0,
+  combo: 0,
+  comboTimer: null,
+  upgrades: UPGRADES.map(u => ({ ...u })),
+  activeMarketFilter: 'all',
+  ownedSkins: ['neon'],
+  activeSkin: 'neon',
+  boostMultiplier: 1,
+  boostUntil: 0,
+};
+
+// Cost formula: floor(baseCost * 1.15^level)
+function upgradeCost(u) {
+  if (u.level >= u.maxLevel) return Infinity;
+  return Math.floor(u.baseCost * Math.pow(1.15, u.level));
+}
+
+// Income formula: baseIncome * level * (1 + 0.05*level) — accelerating returns
+function upgradeIncome(u) {
+  if (u.level === 0) return 0;
+  return Math.floor(u.baseIncome * u.level * (1 + 0.05 * u.level));
+}
+
+function totalPassivePerHour() {
+  return state.upgrades.reduce((sum, u) => sum + upgradeIncome(u), 0);
+}
+
+// ===== SAVE / LOAD =====
+const SAVE_KEY = 'sneaker_kombat_save_v1';
+
+function saveGame() {
+  try {
+    const data = {
+      hp: state.hp,
+      totalEarned: state.totalEarned,
+      energy: state.energy,
+      tapsToday: state.tapsToday,
+      upgradeLevels: state.upgrades.map(u => u.level),
+      ownedSkins: state.ownedSkins,
+      activeSkin: state.activeSkin,
+      boostMultiplier: state.boostMultiplier,
+      boostUntil: state.boostUntil,
+      raffleEndsAt: window.raffleEndsAt || null,
+      lastSaved: Date.now(),
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (err) {
+    console.warn('[Save] failed to save:', err);
+  }
+}
+
+function loadGame() {
+  let data;
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    data = JSON.parse(raw);
+  } catch (err) {
+    console.warn('[Save] failed to load:', err);
+    return false;
+  }
+
+  state.hp = data.hp ?? state.hp;
+  state.totalEarned = data.totalEarned ?? state.totalEarned;
+  state.tapsToday = data.tapsToday ?? 0;
+  state.ownedSkins = data.ownedSkins && data.ownedSkins.length ? data.ownedSkins : ['neon'];
+  state.activeSkin = data.activeSkin || 'neon';
+
+  if (Array.isArray(data.upgradeLevels)) {
+    data.upgradeLevels.forEach((lvl, i) => {
+      if (state.upgrades[i]) state.upgrades[i].level = lvl || 0;
+    });
+  }
+  state.passivePerHour = totalPassivePerHour();
+  state.tapDamage = 1 + Math.floor(state.upgrades.reduce((s, x) => s + x.level, 0) / 5);
+
+  // Active boost: keep only if still valid
+  if (data.boostUntil && data.boostUntil > Date.now()) {
+    state.boostMultiplier = data.boostMultiplier || 1;
+    state.boostUntil = data.boostUntil;
+  } else {
+    state.boostMultiplier = 1;
+    state.boostUntil = 0;
+  }
+
+  // Offline progress: passive income + energy regen since last save
+  const lastSaved = data.lastSaved || Date.now();
+  const elapsedSec = Math.max(0, Math.floor((Date.now() - lastSaved) / 1000));
+
+  const savedEnergy = (typeof data.energy === 'number') ? data.energy : state.maxEnergy;
+  const regen = elapsedSec * state.energyRegen;
+  state.energy = Math.min(state.maxEnergy, savedEnergy + regen);
+
+  if (elapsedSec > 0 && state.passivePerHour > 0) {
+    const offlineEarn = Math.floor((state.passivePerHour / 3600) * Math.min(elapsedSec, 12 * 3600));
+    if (offlineEarn > 0) {
+      state.hp += offlineEarn;
+      state.totalEarned += offlineEarn;
+      setTimeout(() => showToast(`💤 Welcome back! +${fmtHp(offlineEarn)} HP earned while away`), 900);
+    }
+  }
+
+  // Restore raffle countdown
+  if (data.raffleEndsAt && data.raffleEndsAt > Date.now()) {
+    window.raffleEndsAt = data.raffleEndsAt;
+  }
+
+  return true;
+}
+
+// Save periodically and on important events
+setInterval(saveGame, 5000);
+window.addEventListener('beforeunload', saveGame);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(); });
+
+// ===== TAP HANDLER =====
+let lastTapTime = 0;
+function handleTap(e) {
+  e.preventDefault();
+  if (state.energy <= 0) {
+    showToast('⚡ Out of energy! Refilling...');
+    tg.HapticFeedback.notificationOccurred('error');
+    return;
+  }
+
+  const cost = 1;
+  state.energy = Math.max(0, state.energy - cost);
+
+  // Combo system
+  const now = Date.now();
+  if (now - lastTapTime < 500) {
+    state.combo = Math.min(state.combo + 1, 20);
+  } else {
+    state.combo = 1;
+  }
+  lastTapTime = now;
+
+  clearTimeout(state.comboTimer);
+  state.comboTimer = setTimeout(() => {
+    state.combo = 0;
+    document.getElementById('comboBar').style.opacity = '0';
+    document.getElementById('sneakerStage').classList.remove('combo-hot');
+  }, 1200);
+
+  const comboBonus = 1 + Math.floor(state.combo / 5) * 0.25;
+  const earned = Math.max(1, Math.floor(state.tapDamage * comboBonus * state.boostMultiplier));
+
+  state.hp += earned;
+  state.totalEarned += earned;
+  state.tapsToday++;
+
+  tg.HapticFeedback.impactOccurred('light');
+
+  // Spawn float text
+  const rect = e.currentTarget
+    ? e.currentTarget.getBoundingClientRect()
+    : { left: window.innerWidth / 2, top: window.innerHeight / 2, width: 0, height: 0 };
+  const x = (e.clientX || rect.left + rect.width / 2) + (Math.random() * 40 - 20);
+  const y = (e.clientY || rect.top + rect.height / 2) - 20;
+
+  spawnFloat(`+${earned}`, x, y, state.combo >= 10 ? '#FF2D78' : '#00FF87');
+  spawnParticles(x, y, state.combo >= 10 ? '#FF2D78' : '#00FF87');
+
+  // Combo bar + hot states
+  const stage = document.getElementById('sneakerStage');
+  if (state.combo >= 5) {
+    const cb = document.getElementById('comboBar');
+    cb.style.opacity = '1';
+    document.getElementById('comboCount').textContent = state.combo;
+  }
+  if (state.combo >= 10) {
+    stage.classList.add('combo-hot');
+  } else {
+    stage.classList.remove('combo-hot');
+  }
+  if (state.combo > 0 && state.combo % 10 === 0) {
+    document.body.classList.remove('shake');
+    requestAnimationFrame(() => document.body.classList.add('shake'));
+    setTimeout(() => document.body.classList.remove('shake'), 350);
+    tg.HapticFeedback.notificationOccurred('success');
+  }
+
+  // Tap ripple
+  if (e.currentTarget) {
+    const ripple = document.createElement('div');
+    ripple.className = 'tap-ripple';
+    const rRect = e.currentTarget.getBoundingClientRect();
+    const size = 60;
+    ripple.style.cssText = `left:${(e.clientX || rRect.left + rRect.width/2) - rRect.left - size/2}px;top:${(e.clientY || rRect.top + rRect.height/2) - rRect.top - size/2}px;width:${size}px;height:${size}px`;
+    e.currentTarget.appendChild(ripple);
+    setTimeout(() => ripple.remove(), 550);
+  }
+
+  updateUI();
+}
+
+function spawnFloat(text, x, y, color) {
+  const el = document.createElement('div');
+  el.className = 'float-text';
+  el.textContent = text;
+  el.style.cssText = `left:${x}px;top:${y}px;color:${color};text-shadow:0 0 10px ${color}`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 950);
+}
+
+function spawnParticles(x, y, color) {
+  const count = 6;
+  for (let i = 0; i < count; i++) {
+    const p = document.createElement('div');
+    p.className = 'tap-particle';
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.6;
+    const dist = 30 + Math.random() * 40;
+    const px = Math.cos(angle) * dist;
+    const py = Math.sin(angle) * dist - 10;
+    p.style.cssText = `left:${x}px;top:${y}px;background:${color};--px:${px}px;--py:${py}px;box-shadow:0 0 6px ${color}`;
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 750);
+  }
+}
+
+// ===== ENERGY REGEN =====
+setInterval(() => {
+  if (state.energy < state.maxEnergy) {
+    state.energy = Math.min(state.maxEnergy, state.energy + state.energyRegen);
+    updateEnergyUI();
+  }
+}, 1000);
+
+// ===== PASSIVE INCOME =====
+setInterval(() => {
+  if (state.boostUntil && Date.now() > state.boostUntil) {
+    state.boostMultiplier = 1;
+    state.boostUntil = 0;
+    showToast('⏳ 2x HP boost expired');
+  }
+  const perSec = (state.passivePerHour / 3600) * state.boostMultiplier;
+  state.hp += perSec;
+  state.totalEarned += perSec;
+  updateBalanceUI();
+}, 1000);
+
+// ===== BUY UPGRADE =====
+function buyUpgrade(id) {
+  const u = state.upgrades.find(x => x.id === id);
+  if (!u) return;
+  if (u.level >= u.maxLevel) { showToast('✅ Already maxed out!'); return; }
+  const cost = upgradeCost(u);
+  if (state.hp < cost) {
+    showToast(`❌ Need ${fmtHp(cost)} HP`);
+    tg.HapticFeedback.notificationOccurred('error');
+    return;
+  }
+  state.hp -= cost;
+  u.level++;
+  state.passivePerHour = totalPassivePerHour();
+  // tap damage scales with total levels
+  state.tapDamage = 1 + Math.floor(state.upgrades.reduce((s, x) => s + x.level, 0) / 5);
+  tg.HapticFeedback.notificationOccurred('success');
+  showToast(`🚀 ${u.name} upgraded to Lv.${u.level}!`);
+  renderUpgrades();
+  updateUI();
+}
+
+function buyResell(cost) {
+  if (state.hp < cost) { showToast(`❌ Need ${fmtHp(cost)} HP`); return; }
+  state.hp -= cost;
+  showToast('🛒 Nike SB Dunk added to your collection!');
+  updateUI();
+}
+
+// ===== RAFFLE =====
+function enterRaffle() {
+  openStarsInvoice('sneaker_kombat_ticket_01', 50, (status) => {
+    if (status === 'paid') {
+      showToast('🎟 You\'re in the raffle! Good luck!');
+      tg.HapticFeedback.notificationOccurred('success');
+    }
+  });
+}
+
+// ===== SKINS =====
+function renderSkins() {
+  const grid = document.getElementById('skinGrid');
+  if (!grid) return;
+  let rankIdx = 0;
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (state.totalEarned >= RANKS[i].threshold) { rankIdx = i; break; }
+  }
+  grid.innerHTML = SKINS.map(skin => {
+    const owned = state.ownedSkins.includes(skin.id);
+    const equipped = state.activeSkin === skin.id;
+    let btn;
+    if (equipped) {
+      btn = `<button class="skin-btn equipped-btn">✅ Equipped</button>`;
+    } else if (owned) {
+      btn = `<button class="skin-btn equip" onclick="equipSkin('${skin.id}')">Equip</button>`;
+    } else if (skin.unlock === 'stars') {
+      btn = `<button class="skin-btn equip" onclick="buySkinWithStars('${skin.id}')">⭐ ${skin.price}</button>`;
+    } else if (skin.unlock === 'rank') {
+      const need = RANKS[skin.rank];
+      btn = rankIdx >= skin.rank
+        ? `<button class="skin-btn equip" onclick="equipSkin('${skin.id}')">Unlock</button>`
+        : `<button class="skin-btn locked-btn">🔒 ${need.name}</button>`;
+    } else {
+      btn = `<button class="skin-btn locked-btn">🔒 Box only</button>`;
+    }
+    return `<div class="skin-card ${equipped ? 'equipped' : ''} ${!owned && skin.unlock !== 'stars' && !(skin.unlock==='rank' && rankIdx>=skin.rank) ? 'locked' : ''}">
+      <div class="skin-preview">${sneakerSVG(skin)}</div>
+      <div class="skin-name">${skin.name}</div>
+      <div class="skin-rarity">${skin.rarity}</div>
+      ${btn}
+    </div>`;
+  }).join('');
+}
+
+function equipSkin(id) {
+  const skin = SKINS.find(s => s.id === id);
+  if (!skin) return;
+  if (!state.ownedSkins.includes(id)) state.ownedSkins.push(id);
+  state.activeSkin = id;
+  renderSneaker();
+  renderSkins();
+  showToast(`👟 Equipped ${skin.name}!`);
+  tg.HapticFeedback.notificationOccurred('success');
+}
+
+function buySkinWithStars(id) {
+  const skin = SKINS.find(s => s.id === id);
+  if (!skin) return;
+  openStarsInvoice(`sneaker_kombat_skin_${id}`, skin.price, (status) => {
+    if (status === 'paid') {
+      if (!state.ownedSkins.includes(id)) state.ownedSkins.push(id);
+      renderSkins();
+      showToast(`🎉 Unlocked ${skin.name}! Equip it now.`);
+      tg.HapticFeedback.notificationOccurred('success');
+    }
+  });
+}
+
+// ===== MYSTERY BOXES =====
+function openBox(type) {
+  if (type === 'hp') {
+    const cost = 5000;
+    if (state.hp < cost) { showToast(`❌ Need ${fmtHp(cost)} HP for an HP Crate`); return; }
+    state.hp -= cost;
+    updateUI();
+    showBoxModal('📦', () => rollHpCrate());
+  } else if (type === 'stars') {
+    openStarsInvoice('sneaker_kombat_grail_box', 75, (status) => {
+      if (status === 'paid') {
+        showBoxModal('🎁', () => rollGrailBox());
+      }
+    });
+  }
+}
+
+function rollHpCrate() {
+  const roll = Math.random();
+  if (roll < 0.08) {
+    // skin chance
+    const lockedSkins = SKINS.filter(s => !state.ownedSkins.includes(s.id) && s.unlock !== 'box');
+    if (lockedSkins.length) {
+      const skin = lockedSkins[Math.floor(Math.random() * lockedSkins.length)];
+      state.ownedSkins.push(skin.id);
+      renderSkins();
+      return { emoji: '👟', name: skin.name, desc: `New skin unlocked! (${skin.rarity})` };
+    }
+  }
+  const hp = Math.floor(1000 + Math.random() * 19000);
+  state.hp += hp;
+  state.totalEarned += hp;
+  updateUI();
+  return { emoji: '💰', name: `+${fmtHp(hp)} HP`, desc: 'Added to your balance' };
+}
+
+function rollGrailBox() {
+  const grailSkins = SKINS.filter(s => s.unlock === 'box' && !state.ownedSkins.includes(s.id));
+  if (grailSkins.length && Math.random() < 0.6) {
+    const skin = grailSkins[Math.floor(Math.random() * grailSkins.length)];
+    state.ownedSkins.push(skin.id);
+    renderSkins();
+    return { emoji: '🏆', name: skin.name, desc: `GRAIL skin unlocked! (${skin.rarity})` };
+  }
+  const hp = Math.floor(50000 + Math.random() * 200000);
+  state.hp += hp;
+  state.totalEarned += hp;
+  updateUI();
+  return { emoji: '💎', name: `+${fmtHp(hp)} HP`, desc: 'Massive reward added!' };
+}
+
+function showBoxModal(boxEmoji, rollFn) {
+  const overlay = document.getElementById('boxModal');
+  const icon = document.getElementById('modalBoxIcon');
+  const title = document.getElementById('modalTitle');
+  const sub = document.getElementById('modalSub');
+  const reward = document.getElementById('modalReward');
+  const closeBtn = document.getElementById('modalCloseBtn');
+
+  icon.textContent = boxEmoji;
+  icon.classList.add('shaking');
+  title.textContent = 'Opening...';
+  sub.textContent = 'Hold tight, unwrapping your reward';
+  reward.classList.remove('show');
+  closeBtn.style.display = 'none';
+  overlay.classList.add('show');
+  tg.HapticFeedback.impactOccurred('medium');
+
+  setTimeout(() => {
+    icon.classList.remove('shaking');
+    const result = rollFn();
+    icon.textContent = result.emoji;
+    title.textContent = 'You got:';
+    sub.textContent = '';
+    document.getElementById('modalRewardEmoji').textContent = result.emoji;
+    document.getElementById('modalRewardName').textContent = result.name;
+    document.getElementById('modalRewardDesc').textContent = result.desc;
+    reward.classList.add('show');
+    closeBtn.style.display = 'block';
+    spawnConfetti();
+    tg.HapticFeedback.notificationOccurred('success');
+  }, 1400);
+}
+
+function closeBoxModal() {
+  document.getElementById('boxModal').classList.remove('show');
+}
+
+function spawnConfetti() {
+  const colors = ['#00FF87', '#FF2D78', '#FFD700', '#00CCFF', '#FF6B2B'];
+  for (let i = 0; i < 24; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti-piece';
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const left = Math.random() * 100;
+    const delay = Math.random() * 0.4;
+    const dur = 1 + Math.random() * 0.8;
+    c.style.cssText = `left:${left}vw;background:${color};animation-delay:${delay}s;animation-duration:${dur}s;`;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 2200);
+  }
+}
+
+// ===== STAR PACK PURCHASES =====
+function buyStarItem(type) {
+  const items = {
+    energy:     { slug: 'sneaker_kombat_energy_refill', label: 'Full Energy', price: 10 },
+    doublehp:   { slug: 'sneaker_kombat_2x_boost',       label: '2x HP Boost (30 min)', price: 30 },
+    ticket:     { slug: 'sneaker_kombat_ticket_01',      label: 'Golden Ticket', price: 50 },
+    hypebundle: { slug: 'sneaker_kombat_hype_bundle',    label: 'Hype Bundle', price: 99 },
+  };
+  const item = items[type];
+  if (!item) return;
+  openStarsInvoice(item.slug, item.price, (status) => {
+    if (status !== 'paid') return;
+    tg.HapticFeedback.notificationOccurred('success');
+    switch (type) {
+      case 'energy':
+        state.energy = state.maxEnergy;
+        showToast('⚡ Energy fully refilled!');
+        break;
+      case 'doublehp':
+        state.boostMultiplier = 2;
+        state.boostUntil = Date.now() + 30 * 60 * 1000;
+        showToast('🚀 2x HP boost active for 30 minutes!');
+        break;
+      case 'ticket':
+        showToast('🎟 Golden Ticket added — head to Drops!');
+        break;
+      case 'hypebundle':
+        state.hp += 5000;
+        state.totalEarned += 5000;
+        showToast('📦 Hype Bundle opened: +5,000 HP + 3 tickets!');
+        break;
+    }
+    updateUI();
+  });
+}
+
+// ===== DONATIONS =====
+function donateStars(amount) {
+  openStarsInvoice(`sneaker_kombat_donate_${amount}`, amount, (status) => {
+    if (status === 'paid') {
+      showToast(`❤️ Thanks for the ⭐ ${amount} tip — you're the GOAT!`);
+      tg.HapticFeedback.notificationOccurred('success');
+    }
+  });
+}
+
+// ===== MARKET FILTER =====
+function filterMarket(cat, el) {
+  document.querySelectorAll('.tab-pills .pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  state.activeMarketFilter = cat;
+  renderUpgrades();
+}
+
+// ===== RENDER UPGRADES =====
+function renderUpgrades() {
+  const grid = document.getElementById('upgradeGrid');
+  const filtered = state.activeMarketFilter === 'all'
+    ? state.upgrades
+    : state.upgrades.filter(u => u.category === state.activeMarketFilter);
+
+  grid.innerHTML = filtered.map(u => {
+    const cost = upgradeCost(u);
+    const income = upgradeIncome(u);
+    const nextIncome = u.level < u.maxLevel ? Math.floor(u.baseIncome * (u.level+1) * (1 + 0.05*(u.level+1))) : income;
+    const canBuy = state.hp >= cost && u.level < u.maxLevel;
+    const isMaxed = u.level >= u.maxLevel;
+
+    return `<div class="upgrade-card ${isMaxed ? 'maxed' : canBuy ? 'affordable' : ''}">
+      <span class="upgrade-emoji">${u.emoji}</span>
+      <div class="upgrade-name">${u.name}</div>
+      <div class="upgrade-level">Level ${u.level}${isMaxed ? ' (MAX)' : ` / ${u.maxLevel}`}</div>
+      <div class="upgrade-income">${income > 0 ? `+${fmtHp(income)} HP/hr` : `+${fmtHp(nextIncome)} HP/hr`}</div>
+      <button class="upgrade-btn ${isMaxed ? 'is-maxed' : canBuy ? 'can-buy' : 'cant-buy'}"
+        onclick="buyUpgrade(${u.id})">
+        ${isMaxed ? '✅ MAXED' : `${fmtHp(cost)} HP`}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+// ===== FORMAT =====
+function fmtHp(n) {
+  n = Math.floor(n);
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+  return n.toString();
+}
+
+// ===== UPDATE UI =====
+function updateUI() {
+  updateBalanceUI();
+  updateEnergyUI();
+  updateRankUI();
+  document.getElementById('tapsToday').textContent = fmtHp(state.tapsToday);
+  document.getElementById('passiveHr').textContent = fmtHp(state.passivePerHour);
+
+  const hasAffordable = state.upgrades.some(u => state.hp >= upgradeCost(u) && u.level < u.maxLevel);
+  document.getElementById('marketDot').style.display = hasAffordable ? 'block' : 'none';
+}
+
+function updateBalanceUI() {
+  document.getElementById('hpDisplay').textContent = fmtHp(state.hp);
+  document.getElementById('passiveDisplay').textContent = `+${fmtHp(state.passivePerHour)} HP/hr`;
+}
+
+function updateEnergyUI() {
+  const pct = (state.energy / state.maxEnergy * 100).toFixed(1);
+  document.getElementById('energyVal').textContent = Math.floor(state.energy);
+  document.getElementById('energyMax').textContent = state.maxEnergy;
+  document.getElementById('energyBarFill').style.width = pct + '%';
+}
+
+function updateRankUI() {
+  // Find current rank
+  let rankIdx = 0;
+  for (let i = RANKS.length - 1; i >= 0; i--) {
+    if (state.totalEarned >= RANKS[i].threshold) { rankIdx = i; break; }
+  }
+  const rank = RANKS[rankIdx];
+  const nextRank = RANKS[Math.min(rankIdx + 1, RANKS.length - 1)];
+
+  document.getElementById('rankName').textContent = rank.name;
+  document.getElementById('rankIcon').textContent = rank.icon;
+  document.getElementById('rankCurrent').textContent = rank.name;
+  document.getElementById('rankNext').textContent = nextRank.name;
+
+  const progress = rankIdx < RANKS.length - 1
+    ? Math.min(100, ((state.totalEarned - rank.threshold) / (nextRank.threshold - rank.threshold)) * 100)
+    : 100;
+  document.getElementById('rankBarFill').style.width = progress.toFixed(1) + '%';
+}
+
+// ===== NAVIGATION =====
+function switchTab(tab, el) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  el.classList.add('active');
+
+  if (tab === 'market') renderUpgrades();
+  if (tab === 'shop') renderSkins();
+}
+
+// ===== TOAST =====
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ===== FRIENDS =====
+function copyRef() {
+  navigator.clipboard?.writeText('https://t.me/SneakerKombatBot?start=ref_12345678')
+    .then(() => showToast('📋 Referral link copied!'))
+    .catch(() => showToast('📋 Link: t.me/SneakerKombatBot?start=ref_12345678'));
+}
+
+function inviteFriend() {
+  const url = 'https://t.me/share/url?url=https%3A%2F%2Ft.me%2FSneakerKombatBot%3Fstart%3Dref_12345678&text=Join%20me%20in%20Sneaker%20Kombat%20%F0%9F%91%9F%20Get%205K%20HP%20for%20free!';
+  window.open(url, '_blank');
+}
+
+// ===== RAFFLE COUNTDOWN =====
+if (!window.raffleEndsAt) {
+  window.raffleEndsAt = Date.now() + 13338 * 1000;
+}
+setInterval(() => {
+  const raffleSeconds = Math.max(0, Math.floor((window.raffleEndsAt - Date.now()) / 1000));
+  const h = String(Math.floor(raffleSeconds / 3600)).padStart(2, '0');
+  const m = String(Math.floor((raffleSeconds % 3600) / 60)).padStart(2, '0');
+  const s = String(raffleSeconds % 60).padStart(2, '0');
+  const el = document.getElementById('raffleTimer');
+  if (el) el.textContent = `${h}:${m}:${s}`;
+}, 1000);
+
+// ===== STARTUP =====
+const hadSave = loadGame();
+if (!hadSave) {
+  // Give new player 100 HP to feel good instantly
+  state.hp = 100;
+  state.totalEarned = 100;
+}
+renderSneaker();
+updateUI();
+renderUpgrades();
+renderSkins();
+
+setTimeout(() => {
+  showToast('👟 Welcome to Sneaker Kombat! Tap to earn HP!');
+}, 600);
+</script>
+</body>
+</html>
